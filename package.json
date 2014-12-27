@@ -1,6 +1,6 @@
 {
   "name": "another-mongoose-statemachine",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "State machine plugin for Mongoose ODM",
   "main": "index.js",
   "scripts": {
