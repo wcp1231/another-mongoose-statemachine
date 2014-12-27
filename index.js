@@ -1,0 +1,84 @@
+'use strict';
+
+var _ = require("lodash");
+
+module.exports = function (schema, options) {
+  var states = options.states;
+  var transitions = options.transitions;
+  var stateNames = _.keys(states);
+  var transitionNames = _.keys(transitions);
+
+  schema.add({ state: { type: String,
+                        enum: stateNames,
+                        default: defaultState(states) } });
+
+  schema.virtual('_states').get(function() {
+    return schema.paths.state.enumValues;
+  });
+
+  function transitionize(t) {
+    return function(callback) {
+      var self = this;
+      var transition = transitions[t];
+      var from;
+      var exit;
+
+      if(_.isString(transition.from)) {
+        from = transition.from;
+      } else if(_.isArray(transition.from)) {
+        from = _.find(transition.from, function(s) { return s === self.state; });
+      }
+
+      if(from) {
+        exit = states[from].exit;
+      }
+
+      var enter = states[transition.to].enter;
+      var guard = transition.guard;
+
+      if(_.isFunction(guard)) {
+        if(!guard.apply(self)) {
+          return callback(new Error('guard failed'));
+        }
+      } else if(_.isPlainObject(guard)) {
+        _.forEach(guard, function(v, k) {
+          var tmp = v.apply(self);
+          if(tmp) {
+            self.invalidate(k, tmp);
+          }
+        });
+        if(self.$__.validationError) {
+          return callback(self.$__.validationError);
+        }
+      }
+
+      if(self.state === from) {
+        self.state = transition.to;
+      }
+
+      self.save(function(err) {
+        if(err) {
+          return callback(err);
+        }
+
+        if(enter) { enter.call(self); }
+        if(exit) { exit.call(self); }
+        return callback();
+      });
+    };
+  }
+
+  var transitionMethods = {};
+  transitionNames.forEach(function(t) {
+    transitionMethods[t] = transitionize(t);
+  });
+  schema.method(transitionMethods);
+};
+
+function defaultState(states) {
+  var stateNames = _.keys(states);
+  var selected = _.filter(stateNames, function(s) {
+    return !!states[s].default;
+  });
+  return selected[0] || stateNames[0];
+}
