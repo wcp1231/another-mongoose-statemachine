@@ -252,6 +252,15 @@ describe('state machine', function() {
       model.stateValue.should.eql(1);
     });
 
+    it('should change value after transition', function(done) {
+      var model = new Model();
+      model.x(function(err) {
+        model.state.should.eql('b');
+        model.stateValue.should.equal(1);
+        done();
+      });
+    });
+
   });
 
 });

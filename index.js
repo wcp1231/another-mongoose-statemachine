@@ -67,7 +67,7 @@ module.exports = function (schema, options) {
       if(self.state === from) {
         self.state = transition.to;
 
-        if(defaultState.value) {
+        if(_.has(defaultState, 'value')) {
           self.stateValue = states[self.state].value;
         }
       }
