@@ -1,0 +1,211 @@
+'use strict';
+
+var statemachine = require("../index");
+var mongoose = require("mongoose");
+var should = require('chai').should();
+
+describe('state machine', function() {
+
+  before(function(done) {
+    mongoose.connect('mongodb://localhost:27017/statemachine-test');
+    done();
+  });
+
+  describe('schema', function() {
+
+    it('should enumerate states', function() {
+      var schema = new mongoose.Schema();
+
+      schema.plugin(statemachine, {
+        states: {
+          a: {}, b: {}, c: {}
+        },
+        transitions: {
+          x: { from: 'a', to: 'b' },
+          y: { from: 'b', to: 'c', guard: function() { return true; } },
+          z: { from: 'c', to: 'a' }
+        }
+      });
+
+      schema.paths.state.enumValues.should.eql(['a', 'b', 'c']);
+    });
+
+  });
+
+  describe('model', function() {
+
+    var Model, model;
+
+    before(function() {
+      var schema = new mongoose.Schema();
+
+      schema.plugin(statemachine, {
+        states: {
+          a: {}, b: {}, c: {}
+        },
+        transitions: {
+          x: { from: 'a', to: 'b' },
+          y: { from: 'b', to: 'c', guard: function() { return false; } },
+          z: { from: ['b', 'c'], to: 'a' }
+        }
+      });
+
+      Model = mongoose.model('Model', schema);
+    });
+
+    beforeEach(function() {
+      model = new Model();
+    });
+
+    it('should expose available states', function() {
+      model._states.should.eql(['a', 'b', 'c']);
+    });
+
+    it('should have transition methods', function() {
+      model.x.should.be.a('function');
+      model.y.should.be.a('function');
+      model.z.should.be.a('function');
+    });
+
+    it('should have a default state', function() {
+      model.state.should.eql('a');
+    });
+
+    it('should look for a defined default state', function() {
+      var DefaultState = new mongoose.Schema();
+      DefaultState.plugin(statemachine, {
+        states: { a: {}, b: { default: true } },
+        transitions: {}
+      });
+      var Model_ = mongoose.model('DefaultState', DefaultState);
+      model = new Model_();
+      model.state.should.eql('b');
+    });
+
+    it('should transition between states', function(done) {
+      model.x(function(err) {
+        model.state.should.eql('b');
+        done();
+      });
+    });
+
+    it('should require transitions between states to be defined', function(done) {
+      model.y(function(err) {
+        model.state.should.eql('a');
+        done();
+      });
+    });
+
+    it('should accept an array of "from" states in the transition', function(done) {
+      model = new Model({ state: 'b' });
+      model.z(function(err) {
+        model.state.should.eql('a');
+        done();
+      });
+    });
+
+    it('should guard transitions', function(done) {
+      model = new Model({ state: 'b' });
+      model.y(function(err) {
+        model.state.should.eql('b');
+        done();
+      });
+    });
+
+    it('should save the document during transition', function(done) {
+      model = new Model({ state: 'c' });
+      model.z(function(err) {
+        model.isNew.should.be.false;
+        done();
+      });
+    });
+
+  });
+
+  describe('guard', function() {
+
+    var Model;
+
+    before(function(done) {
+      var GuardSchema = new mongoose.Schema({
+        attr1: String,
+        attr2: String,
+      });
+      GuardSchema.plugin(statemachine, {
+        states: { a: {}, b: {} },
+        transitions: {
+          f: {
+            from: 'a', to: 'b',
+            guard: {
+              attr1: function() {
+                if(!this.attr1) {
+                  return 'required';
+                }
+              }
+            }
+          }
+        }
+      });
+
+      Model = mongoose.model('GuardSchema', GuardSchema);
+      done();
+    });
+
+    it('should protect the state', function(done) {
+      var model = new Model();
+      model.f(function(err) {
+        model.state.should.eql('a');
+        done();
+      });
+    });
+
+    it('should invalidate the document', function(done) {
+      var model = new Model();
+      model.f(function(err) {
+        err.errors.attr1.message.should.eql('required');
+        done();
+      });
+    });
+  });
+
+  describe('after transition', function() {
+
+    var enterCalled, exitCalled, Model;
+
+    before(function() {
+      enterCalled = false;
+      exitCalled = false;
+
+      var CallbackSchema = new mongoose.Schema();
+      CallbackSchema.plugin(statemachine, {
+        states: {
+          a: { exit: function() { exitCalled = true; } },
+          b: { enter: function() { enterCalled = true; } }
+        },
+        transitions: {
+          f: { from: 'a', to: 'b' }
+        }
+      });
+
+      Model = mongoose.model('CallbackSchema', CallbackSchema);
+    });
+
+    it('should call enter', function(done) {
+      var model = new Model();
+      model.f(function(err) {
+        enterCalled.should.be.true;
+        done();
+      });
+    });
+
+    it('should call exit', function(done) {
+      var model = new Model();
+      model.f(function() {
+        exitCalled.should.be.true;
+        done();
+      });
+    });
+
+  });
+
+});

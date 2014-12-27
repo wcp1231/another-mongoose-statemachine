@@ -4,7 +4,7 @@
   "description": "State machine plugin for Mongoose ODM",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_ENV=test mocha test"
   },
   "repository": {
     "type": "git",
@@ -24,5 +24,9 @@
   "dependencies": {
     "lodash": "^2.4.1",
     "mongoose": "^3.8.21"
+  },
+  "devDependencies": {
+    "chai": "^1.10.0",
+    "mocha": "^2.1.0"
   }
 }
