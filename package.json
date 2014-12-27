@@ -1,0 +1,28 @@
+{
+  "name": "another-mongoose-statemachine",
+  "version": "0.0.1",
+  "description": "State machine plugin for Mongoose ODM",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wcp1231/another-mongoose-statemachine"
+  },
+  "keywords": [
+    "mongoose",
+    "MongoDB",
+    "state-machine"
+  ],
+  "author": "Chunpeng Wen <wcp1231@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wcp1231/another-mongoose-statemachine/issues"
+  },
+  "homepage": "https://github.com/wcp1231/another-mongoose-statemachine",
+  "dependencies": {
+    "lodash": "^2.4.1",
+    "mongoose": "^3.8.21"
+  }
+}
