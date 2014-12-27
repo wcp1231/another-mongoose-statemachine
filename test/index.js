@@ -208,4 +208,50 @@ describe('state machine', function() {
 
   });
 
+  describe('state value', function() {
+
+    var Model;
+
+    before(function() {
+      var schema = new mongoose.Schema();
+
+      schema.plugin(statemachine, {
+        states: {
+          a: { value: 0 }, b: { value: 1 }, c: { value: 2 }
+        },
+        transitions: {
+          x: { from: 'a', to: 'b' },
+          y: { from: 'b', to: 'c', guard: function() { return false; } },
+          z: { from: ['b', 'c'], to: 'a' }
+        }
+      });
+
+      Model = mongoose.model('ValueModel', schema);
+    });
+
+    it('should have static method to get value', function() {
+      Model.getStateValue.should.be.a('function');
+      Model.getStateValue('a').should.be.equal(0);
+      Model.getStateValue('b').should.be.equal(1);
+      Model.getStateValue('c').should.be.equal(2);
+    });
+
+    it('should have a default state value', function() {
+      var model = new Model();
+      model.stateValue.should.eql(0);
+    });
+
+    it('should look for a defined default state value', function() {
+      var DefaultState = new mongoose.Schema();
+      DefaultState.plugin(statemachine, {
+        states: { a: { value: 0 }, b: { value: 1, default: true } },
+        transitions: {}
+      });
+      var Model_ = mongoose.model('DefaultStateValue', DefaultState);
+      var model = new Model_();
+      model.stateValue.should.eql(1);
+    });
+
+  });
+
 });

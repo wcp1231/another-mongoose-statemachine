@@ -8,9 +8,21 @@ module.exports = function (schema, options) {
   var stateNames = _.keys(states);
   var transitionNames = _.keys(transitions);
 
+  var defaultStateName = getDefaultState(states);
+  var defaultState = states[defaultStateName];
+
   schema.add({ state: { type: String,
                         enum: stateNames,
-                        default: defaultState(states) } });
+                        default: defaultStateName } });
+
+  if(_.has(defaultState, 'value')) {
+    schema.add({ stateValue: { type: Number,
+                               default: defaultState.value } });
+
+    schema.statics.getStateValue = function(stateName) {
+      return states[stateName].value;
+    };
+  }
 
   schema.virtual('_states').get(function() {
     return schema.paths.state.enumValues;
@@ -54,6 +66,10 @@ module.exports = function (schema, options) {
 
       if(self.state === from) {
         self.state = transition.to;
+
+        if(defaultState.value) {
+          self.stateValue = states[self.state].value;
+        }
       }
 
       self.save(function(err) {
@@ -75,7 +91,7 @@ module.exports = function (schema, options) {
   schema.method(transitionMethods);
 };
 
-function defaultState(states) {
+function getDefaultState(states) {
   var stateNames = _.keys(states);
   var selected = _.filter(stateNames, function(s) {
     return !!states[s].default;
