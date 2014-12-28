@@ -85,11 +85,27 @@ module.exports = function (schema, options) {
   }
 
   var transitionMethods = {};
+  var transitionStatics = {};
   transitionNames.forEach(function(t) {
     transitionMethods[t] = transitionize(t);
+    transitionStatics[t] = staticTransitionize(t);
   });
   schema.method(transitionMethods);
+  schema.static(transitionStatics);
 };
+
+function staticTransitionize(transitionName) {
+  return function(id, callback) {
+    this.findOne({ _id: id }).exec(function(err, item) {
+      if(err) {
+        callback(err);
+      }
+      if(item) {
+        item[transitionName].call(item, callback);
+      }
+    });
+  };
+}
 
 function getDefaultState(states) {
   var stateNames = _.keys(states);

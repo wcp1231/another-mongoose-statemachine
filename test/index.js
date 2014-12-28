@@ -11,6 +11,10 @@ describe('state machine', function() {
     done();
   });
 
+  after(function() {
+    mongoose.connection.db.dropDatabase();
+  });
+
   describe('schema', function() {
 
     it('should enumerate states', function() {
@@ -67,6 +71,12 @@ describe('state machine', function() {
       model.z.should.be.a('function');
     });
 
+    it('should have static transition methods', function() {
+      Model.x.should.be.a('function');
+      Model.y.should.be.a('function');
+      Model.z.should.be.a('function');
+    });
+
     it('should have a default state', function() {
       model.state.should.eql('a');
     });
@@ -84,8 +94,19 @@ describe('state machine', function() {
 
     it('should transition between states', function(done) {
       model.x(function(err) {
-        model.state.should.eql('b');
+        model.state.should.equal('b');
         done();
+      });
+    });
+
+    it('should transition between states with static method', function(done) {
+      Model.create({}).then(function(model) {
+        Model.x(model._id, function(err) {
+          Model.findOne({ _id: model._id }).exec(function(err, model) {
+            model.state.should.equal('b');
+            done();
+          });
+        });
       });
     });
 
