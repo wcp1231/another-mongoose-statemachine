@@ -98,11 +98,12 @@ function staticTransitionize(transitionName) {
   return function(id, callback) {
     this.findOne({ _id: id }).exec(function(err, item) {
       if(err) {
-        callback(err);
+        return callback(err);
       }
-      if(item) {
-        item[transitionName].call(item, callback);
+      if(!item) {
+        return callback(new Error('finded null'));
       }
+      item[transitionName].call(item, callback);
     });
   };
 }
