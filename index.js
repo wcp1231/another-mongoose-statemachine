@@ -36,7 +36,11 @@ module.exports = function (schema, options) {
       var exit;
 
       if(_.isString(transition.from)) {
-        from = transition.from;
+        if('*' === transition.from) {
+          from = self.state;
+        } else {
+          from = transition.from;
+        }
       } else if(_.isArray(transition.from)) {
         from = _.find(transition.from, function(s) { return s === self.state; });
       }
