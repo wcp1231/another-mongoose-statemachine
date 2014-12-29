@@ -110,6 +110,15 @@ describe('state machine', function() {
       });
     });
 
+    it('should throw error when find nothing', function(done) {
+      var model = new Model();
+      Model.x(model._id, function(err) {
+        err.should.not.be.null
+          .and.be.a('Error');
+        done();
+      });
+    });
+
     it('should require transitions between states to be defined', function(done) {
       model.y(function(err) {
         model.state.should.eql('a');
