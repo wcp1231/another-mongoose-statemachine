@@ -200,7 +200,7 @@ describe('state machine', function() {
 
   describe('after transition', function() {
 
-    var enterCalled, exitCalled, Model;
+    var enterCalled, exitCalled, behaviorCalled, Model;
 
     before(function() {
       enterCalled = false;
@@ -213,7 +213,7 @@ describe('state machine', function() {
           b: { enter: function() { enterCalled = true; } }
         },
         transitions: {
-          f: { from: 'a', to: 'b' }
+          f: { from: 'a', to: 'b', behavior: function() { behaviorCalled = true; } }
         }
       });
 
@@ -232,6 +232,14 @@ describe('state machine', function() {
       var model = new Model();
       model.f(function() {
         exitCalled.should.be.true;
+        done();
+      });
+    });
+
+    it('should call transition behavior', function(done) {
+      var model = new Model();
+      model.f(function() {
+        behaviorCalled.should.be.true;
         done();
       });
     });

@@ -51,6 +51,7 @@ module.exports = function (schema, options) {
 
       var enter = states[transition.to].enter;
       var guard = transition.guard;
+      var behavior = transition.behavior;
 
       if(_.isFunction(guard)) {
         if(!guard.apply(self)) {
@@ -81,8 +82,9 @@ module.exports = function (schema, options) {
           return callback(err);
         }
 
-        if(enter) { enter.call(self); }
         if(exit) { exit.call(self); }
+        if(behavior) { behavior.call(self); }
+        if(enter) { enter.call(self); }
         return callback();
       });
     };
