@@ -1,0 +1,15 @@
+# .travis.yml
+language: node_js
+
+node_js:
+  - '0.10'
+
+services:
+  - mongodb
+
+script: "npm run-script test-travis"
+
+after_script: "npm install coveralls && cat ./coverage/lcov.info | coveralls"
+
+notifications:
+  email: false
