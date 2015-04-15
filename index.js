@@ -69,7 +69,14 @@ module.exports = function (schema, options) {
         }
       }
 
+      var stateChanged = false;
+      // stateA -> stateA ...
+      var transitionHappend = false;
+
       if(self.state === from) {
+        transitionHappend = true;
+        stateChanged = self.state !== transition.to;
+
         self.state = transition.to;
 
         if(_.has(defaultState, 'value')) {
@@ -82,9 +89,9 @@ module.exports = function (schema, options) {
           return callback(err);
         }
 
-        if(exit) { exit.call(self); }
-        if(behavior) { behavior.call(self); }
-        if(enter) { enter.call(self); }
+        if(exit && stateChanged) { exit.call(self); }
+        if(behavior && transitionHappend) { behavior.call(self); }
+        if(enter && stateChanged) { enter.call(self); }
         return callback();
       });
     };

@@ -3,6 +3,7 @@
 var statemachine = require("../index");
 var mongoose = require("mongoose");
 var should = require('chai').should();
+var sinon = require("sinon");
 
 describe('state machine', function() {
 
@@ -200,20 +201,28 @@ describe('state machine', function() {
 
   describe('after transition', function() {
 
-    var enterCalled, exitCalled, behaviorCalled, Model;
+    var Model;
+    var enterA = sinon.spy();
+    var enterB = sinon.spy();
+    var enterC = sinon.spy();
+    var exitA = sinon.spy();
+    var transBehavior1 = sinon.spy();
+    var transBehavior2 = sinon.spy();
+    var transBehavior3 = sinon.spy();
 
     before(function() {
-      enterCalled = false;
-      exitCalled = false;
 
       var CallbackSchema = new mongoose.Schema();
       CallbackSchema.plugin(statemachine, {
         states: {
-          a: { exit: function() { exitCalled = true; } },
-          b: { enter: function() { enterCalled = true; } }
+          a: { enter: enterA, exit: exitA },
+          b: { enter: enterB },
+          c: { enter: enterC }
         },
         transitions: {
-          f: { from: 'a', to: 'b', behavior: function() { behaviorCalled = true; } }
+          f: { from: 'a', to: 'b', behavior: transBehavior1 },
+          f2: { from: 'a', to: 'c', behavior: transBehavior2 },
+          f3: { from: 'a', to: 'a', behavior: transBehavior3 }
         }
       });
 
@@ -223,7 +232,7 @@ describe('state machine', function() {
     it('should call enter', function(done) {
       var model = new Model();
       model.f(function(err) {
-        enterCalled.should.be.true;
+        enterB.called.should.be.true;
         done();
       });
     });
@@ -231,7 +240,7 @@ describe('state machine', function() {
     it('should call exit', function(done) {
       var model = new Model();
       model.f(function() {
-        exitCalled.should.be.true;
+        exitA.called.should.be.true;
         done();
       });
     });
@@ -239,8 +248,30 @@ describe('state machine', function() {
     it('should call transition behavior', function(done) {
       var model = new Model();
       model.f(function() {
-        behaviorCalled.should.be.true;
+        transBehavior1.called.should.be.true;
         done();
+      });
+    });
+
+    it('should call function once even if call transition many time', function(done) {
+      var model = new Model();
+      model.f2(function() {
+        model.f2(function() {
+          enterC.calledOnce.should.be.true;
+          transBehavior2.calledOnce.should.be.true;
+          done();
+        });
+      });
+    });
+
+    it('should call behavior but not call enter when trans to same state', function(done) {
+      var model = new Model();
+      model.f3(function() {
+        model.f3(function() {
+          enterA.called.should.be.false;
+          transBehavior3.calledTwice.should.be.true;
+          done();
+        });
       });
     });
 
