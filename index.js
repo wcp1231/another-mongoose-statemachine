@@ -24,10 +24,6 @@ module.exports = function (schema, options) {
     };
   }
 
-  schema.virtual('_states').get(function() {
-    return schema.paths.state.enumValues;
-  });
-
   function transitionize(t) {
     return function(callback) {
       var self = this;

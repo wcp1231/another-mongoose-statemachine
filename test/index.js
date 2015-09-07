@@ -62,10 +62,6 @@ describe('state machine', function() {
       model = new Model();
     });
 
-    it('should expose available states', function() {
-      model._states.should.eql(['a', 'b', 'c']);
-    });
-
     it('should have transition methods', function() {
       model.x.should.be.a('function');
       model.y.should.be.a('function');
