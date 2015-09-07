@@ -24,7 +24,7 @@
   "homepage": "https://github.com/wcp1231/another-mongoose-statemachine",
   "dependencies": {
     "lodash": "^2.4.1",
-    "mongoose": "^3.8.21"
+    "mongoose": "^4.1.5"
   },
   "devDependencies": {
     "chai": "^1.10.0",
