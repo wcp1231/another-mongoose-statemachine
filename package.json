@@ -4,8 +4,8 @@
   "description": "State machine plugin for Mongoose ODM",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_ENV=test mocha test",
-    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter spec --check-leaks test/"
+    "test": "NODE_ENV=test mocha --harmony test",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --harmony --report lcovonly -- --reporter spec --check-leaks test/"
   },
   "repository": {
     "type": "git",
