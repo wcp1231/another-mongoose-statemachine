@@ -107,9 +107,14 @@ module.exports = function (schema, options) {
           });
         });
       })).then(function(result) {
+
+        if(result.n === 0) {
+          return Promise.reject('state not changed');
+        }
+
         var callbacks = [];
 
-        if(result.n > 0 && behavior && transitionHappend) {
+        if(behavior && transitionHappend) {
           callbacks.push(behavior.call(instance));
         }
         if(result.nModified > 0) {

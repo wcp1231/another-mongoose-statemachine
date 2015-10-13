@@ -1,6 +1,8 @@
 'use strict';
 
 var statemachine = require("../index");
+var assert = require("assert");
+var Promise = require('bluebird');
 var mongoose = require("mongoose");
 var expect = require('chai').expect;
 var should = require('chai').should();
@@ -151,6 +153,15 @@ describe('state machine', function() {
       });
     });
 
+    it('shoudl success only one when concurrent update', function(done) {
+      var copy = model;
+      Promise.join(
+        model.x(),
+        copy.x().then(null, function(err) { err.should.be.not.null; })
+      ).then(function() {
+        done();
+      }).catch(done);
+    });
   });
 
   describe('after transition', function() {
