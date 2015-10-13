@@ -1,6 +1,7 @@
 'use strict';
 
 var _ = require("lodash");
+var Promise = require('bluebird');
 
 module.exports = function (schema, options) {
   var states = options.states;
@@ -24,75 +25,6 @@ module.exports = function (schema, options) {
     };
   }
 
-  function transitionize(t) {
-    return function(callback) {
-      var self = this;
-      var transition = transitions[t];
-      var from;
-      var exit;
-
-      if(_.isString(transition.from)) {
-        if('*' === transition.from) {
-          from = self.state;
-        } else {
-          from = transition.from;
-        }
-      } else if(_.isArray(transition.from)) {
-        from = _.find(transition.from, function(s) { return s === self.state; });
-      }
-
-      if(from) {
-        exit = states[from].exit;
-      }
-
-      var enter = states[transition.to].enter;
-      var guard = transition.guard;
-      var behavior = transition.behavior;
-
-      if(_.isFunction(guard)) {
-        if(!guard.apply(self)) {
-          return callback(new Error('guard failed'));
-        }
-      } else if(_.isPlainObject(guard)) {
-        _.forEach(guard, function(v, k) {
-          var tmp = v.apply(self);
-          if(tmp) {
-            self.invalidate(k, tmp);
-          }
-        });
-        if(self.$__.validationError) {
-          return callback(self.$__.validationError);
-        }
-      }
-
-      var stateChanged = false;
-      // stateA -> stateA ...
-      var transitionHappend = false;
-
-      if(self.state === from) {
-        transitionHappend = true;
-        stateChanged = self.state !== transition.to;
-
-        self.state = transition.to;
-
-        if(_.has(defaultState, 'value')) {
-          self.stateValue = states[self.state].value;
-        }
-      }
-
-      self.save(function(err) {
-        if(err) {
-          return callback(err);
-        }
-
-        if(exit && stateChanged) { exit.call(self); }
-        if(behavior && transitionHappend) { behavior.call(self); }
-        if(enter && stateChanged) { enter.call(self); }
-        return callback();
-      });
-    };
-  }
-
   var transitionMethods = {};
   var transitionStatics = {};
   transitionNames.forEach(function(t) {
@@ -101,21 +33,96 @@ module.exports = function (schema, options) {
   });
   schema.method(transitionMethods);
   schema.static(transitionStatics);
+
+  function transitionize(t) {
+    return function(callback) {
+      var Model = this.constructor;
+      return Model[t].call(Model, this, callback);
+    };
+  }
+
+  function staticTransitionize(transitionName) {
+    var transition = transitions[transitionName];
+    var enter = states[transition.to].enter;
+    var behavior = transition.behavior;
+    // stateA -> stateA ...
+    var stateChanged = false;
+    var transitionHappend;
+    var toStateValue;
+    var query = {};
+    var from;
+    var exit;
+
+    if(_.has(defaultState, 'value')) {
+      toStateValue = states[transition.to].value;
+    }
+
+    if(_.isString(transition.from)) {
+      if('*' !== transition.from) {
+        query.state = transition.from;
+      }
+    } else if(_.isArray(transition.from)) {
+      query.state = { $in: transition.from };
+    }
+
+    return function(id, callback) {
+      var Model = this;
+      var instance;
+      query._id = id;
+
+      if (id instanceof Model) {
+        instance = id;
+        query._id = id._id;
+      }
+
+      return (new Promise(function(resolve, reject) {
+        Model.findOne(query).exec(function(err, item) {
+          if(err) {
+            return reject(err);
+          }
+          if(!item) {
+            return reject(new Error('found null'));
+          }
+
+          var update = {
+            state: transition.to,
+            stateValue: states[transition.to].value
+          };
+
+          transitionHappend = true;
+          stateChanged = item.state !== transition.to;
+          from = item.state;
+          exit = states[from].exit;
+
+          query.state = from;
+          Model.update(query, update).exec(function(err, r) {
+            if (err) {
+              return reject(err);
+            }
+
+            instance = instance || item;
+            instance.state = update.state;
+            instance.stateValue = update.stateValue;
+            resolve(r);
+          });
+        });
+      })).then(function(result) {
+        var callbacks = [];
+
+        if(result.n > 0 && behavior && transitionHappend) {
+          callbacks.push(behavior.call(instance));
+        }
+        if(result.nModified > 0) {
+          if(exit && stateChanged) { callbacks.push(exit.call(instance)); }
+          if(enter && stateChanged) { callbacks.push(enter.call(instance)); }
+        }
+
+        return Promise.all(callbacks);
+      }).nodeify(callback);
+    };
+  }
 };
 
-function staticTransitionize(transitionName) {
-  return function(id, callback) {
-    this.findOne({ _id: id }).exec(function(err, item) {
-      if(err) {
-        return callback(err);
-      }
-      if(!item) {
-        return callback(new Error('finded null'));
-      }
-      item[transitionName].call(item, callback);
-    });
-  };
-}
 
 function getDefaultState(states) {
   var stateNames = _.keys(states);

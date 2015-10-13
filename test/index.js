@@ -2,6 +2,7 @@
 
 var statemachine = require("../index");
 var mongoose = require("mongoose");
+var expect = require('chai').expect;
 var should = require('chai').should();
 var sinon = require("sinon");
 
@@ -27,7 +28,7 @@ describe('state machine', function() {
         },
         transitions: {
           x: { from: 'a', to: 'b' },
-          y: { from: 'b', to: 'c', guard: function() { return true; } },
+          y: { from: 'b', to: 'c' },
           z: { from: 'c', to: 'a' }
         }
       });
@@ -50,7 +51,7 @@ describe('state machine', function() {
         },
         transitions: {
           x: { from: 'a', to: 'b' },
-          y: { from: 'b', to: 'c', guard: function() { return false; } },
+          y: { from: 'b', to: 'c' },
           z: { from: ['b', 'c'], to: 'a' }
         }
       });
@@ -58,8 +59,11 @@ describe('state machine', function() {
       Model = mongoose.model('Model', schema);
     });
 
-    beforeEach(function() {
+    beforeEach(function(done) {
       model = new Model();
+      model.save(function(err) {
+        done(err);
+      });
     });
 
     it('should have transition methods', function() {
@@ -91,6 +95,7 @@ describe('state machine', function() {
 
     it('should transition between states', function(done) {
       model.x(function(err) {
+        expect(err).to.be.null;
         model.state.should.equal('b');
         done();
       });
@@ -99,7 +104,9 @@ describe('state machine', function() {
     it('should transition between states with static method', function(done) {
       Model.create({}).then(function(model) {
         Model.x(model._id, function(err) {
+          expect(err).to.be.null;
           Model.findOne({ _id: model._id }).exec(function(err, model) {
+            expect(err).to.be.null;
             model.state.should.equal('b');
             done();
           });
@@ -125,74 +132,25 @@ describe('state machine', function() {
 
     it('should accept an array of "from" states in the transition', function(done) {
       model = new Model({ state: 'b' });
-      model.z(function(err) {
-        model.state.should.eql('a');
-        done();
-      });
-    });
-
-    it('should guard transitions', function(done) {
-      model = new Model({ state: 'b' });
-      model.y(function(err) {
-        model.state.should.eql('b');
-        done();
+      model.save(function(err) {
+        model.z(function(err) {
+          expect(err).to.be.null;
+          model.state.should.eql('a');
+          done();
+        });
       });
     });
 
     it('should save the document during transition', function(done) {
       model = new Model({ state: 'c' });
-      model.z(function(err) {
-        model.isNew.should.be.false;
-        done();
+      model.save(function(err) {
+        model.z(function(err) {
+          model.isNew.should.be.false;
+          done();
+        });
       });
     });
 
-  });
-
-  describe('guard', function() {
-
-    var Model;
-
-    before(function(done) {
-      var GuardSchema = new mongoose.Schema({
-        attr1: String,
-        attr2: String,
-      });
-      GuardSchema.plugin(statemachine, {
-        states: { a: {}, b: {} },
-        transitions: {
-          f: {
-            from: 'a', to: 'b',
-            guard: {
-              attr1: function() {
-                if(!this.attr1) {
-                  return 'required';
-                }
-              }
-            }
-          }
-        }
-      });
-
-      Model = mongoose.model('GuardSchema', GuardSchema);
-      done();
-    });
-
-    it('should protect the state', function(done) {
-      var model = new Model();
-      model.f(function(err) {
-        model.state.should.eql('a');
-        done();
-      });
-    });
-
-    it('should invalidate the document', function(done) {
-      var model = new Model();
-      model.f(function(err) {
-        err.errors.attr1.message.should.eql('required');
-        done();
-      });
-    });
   });
 
   describe('after transition', function() {
@@ -227,46 +185,56 @@ describe('state machine', function() {
 
     it('should call enter', function(done) {
       var model = new Model();
-      model.f(function(err) {
-        enterB.called.should.be.true;
-        done();
+      model.save(function(err) {
+        model.f(function(err) {
+          enterB.called.should.be.true;
+          done();
+        });
       });
     });
 
     it('should call exit', function(done) {
       var model = new Model();
-      model.f(function() {
-        exitA.called.should.be.true;
-        done();
+      model.save(function(err) {
+        model.f(function() {
+          exitA.called.should.be.true;
+          done();
+        });
       });
     });
 
     it('should call transition behavior', function(done) {
       var model = new Model();
-      model.f(function() {
-        transBehavior1.called.should.be.true;
-        done();
+      model.save(function(err) {
+        model.f(function() {
+          transBehavior1.called.should.be.true;
+          done();
+        });
       });
     });
 
     it('should call function once even if call transition many time', function(done) {
       var model = new Model();
-      model.f2(function() {
+      model.save(function(err) {
         model.f2(function() {
-          enterC.calledOnce.should.be.true;
-          transBehavior2.calledOnce.should.be.true;
-          done();
+          model.f2(function() {
+            enterC.calledOnce.should.be.true;
+            transBehavior2.calledOnce.should.be.true;
+            done();
+          });
         });
       });
     });
 
     it('should call behavior but not call enter when trans to same state', function(done) {
       var model = new Model();
-      model.f3(function() {
+      model.save(function(err) {
         model.f3(function() {
-          enterA.called.should.be.false;
-          transBehavior3.calledTwice.should.be.true;
-          done();
+          model.f3(function() {
+            enterA.called.should.be.false;
+            transBehavior3.calledTwice.should.be.true;
+            done();
+          });
         });
       });
     });
@@ -286,7 +254,7 @@ describe('state machine', function() {
         },
         transitions: {
           x: { from: 'a', to: 'b' },
-          y: { from: 'b', to: 'c', guard: function() { return false; } },
+          y: { from: 'b', to: 'c' },
           z: { from: ['b', 'c'], to: 'a' }
         }
       });
@@ -319,10 +287,12 @@ describe('state machine', function() {
 
     it('should change value after transition', function(done) {
       var model = new Model();
-      model.x(function(err) {
-        model.state.should.eql('b');
-        model.stateValue.should.equal(1);
-        done();
+      model.save(function(err) {
+        model.x(function(err) {
+          model.state.should.eql('b');
+          model.stateValue.should.equal(1);
+          done();
+        });
       });
     });
 
