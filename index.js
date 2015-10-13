@@ -109,7 +109,7 @@ module.exports = function (schema, options) {
       })).then(function(result) {
 
         if(result.n === 0) {
-          return Promise.reject('state not changed');
+          return Promise.reject(new Error('state not changed'));
         }
 
         var callbacks = [];
