@@ -42,32 +42,33 @@ module.exports = function (schema, options) {
   }
 
   function staticTransitionize(transitionName) {
-    var transition = transitions[transitionName];
-    var enter = states[transition.to].enter;
-    var behavior = transition.behavior;
-    // stateA -> stateA ...
-    var stateChanged = false;
-    var transitionHappend;
-    var toStateValue;
-    var query = {};
-    var from;
-    var exit;
-
-    if(_.has(defaultState, 'value')) {
-      toStateValue = states[transition.to].value;
-    }
-
-    if(_.isString(transition.from)) {
-      if('*' !== transition.from) {
-        query.state = transition.from;
-      }
-    } else if(_.isArray(transition.from)) {
-      query.state = { $in: transition.from };
-    }
-
     return function(id, callback) {
       var Model = this;
+      var transition = transitions[transitionName];
+      var enter = states[transition.to].enter;
+      var behavior = transition.behavior;
+      // stateA -> stateA ...
+      var stateChanged = false;
+      var query = {};
       var instance;
+      var transitionHappend;
+      var toStateValue;
+      var from;
+      var exit;
+
+      if(_.has(defaultState, 'value')) {
+        toStateValue = states[transition.to].value;
+      }
+
+      if(_.isString(transition.from)) {
+        if('*' !== transition.from) {
+          query.state = transition.from;
+        }
+      } else if(_.isArray(transition.from)) {
+        query.state = { $in: transition.from };
+      }
+
+
       query._id = id;
 
       if (id instanceof Model) {
