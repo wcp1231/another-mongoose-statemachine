@@ -62,10 +62,11 @@ module.exports = function (schema, options) {
 
       if(_.isString(transition.from)) {
         if('*' !== transition.from) {
-          query.state = transition.from;
+          query.stateValue = states[transition.from].value;
         }
       } else if(_.isArray(transition.from)) {
-        query.state = { $in: transition.from };
+        var fromValues = _.map(transition.from, function(from) { return states[from].value; });
+        query.stateValue = { $in: fromValues };
       }
 
 
@@ -95,7 +96,7 @@ module.exports = function (schema, options) {
           from = item.state;
           exit = states[from].exit;
 
-          query.state = from;
+          query.stateValue = states[from].value;
           Model.update(query, update).exec(function(err, r) {
             if (err) {
               return reject(err);
